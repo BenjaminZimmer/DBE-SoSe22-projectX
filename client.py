@@ -1,37 +1,73 @@
+import errno
+import imp
 import socket
-import multiprocessing
-import os
+import sys
+from threading import Thread
+
+# Header Utils
+LENGTH_HEADER_SIZE = 8
+USER_HEADER_SIZE = 16
 
 
-def send_message(s_address, s_port):
-    try:
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def format_message(username, message):
+    if not message:
+        return None
+    length_header = f'{len(message):<{LENGTH_HEADER_SIZE}}'
+    user_header = f'{username:<{USER_HEADER_SIZE}}'
+    return f'{length_header}{user_header}{message}'
 
-        message = 'Hi from ' + str(os.getpid()) + \
-            ' at ' + s_address + ':' + str(s_port)
 
-        # Send data
-        client_socket.sendto(str.encode(message), (s_address, s_port))
-        print('Sent to server: ', message)
+IP = '127.0.0.1'
+PORT = 5555
+username = ''
 
-        # Receive response
-        print('Waiting for response...')
-        data, server = client_socket.recvfrom(1024)
-        print('Received message: ', data.decode())
+while not username:
+    username = input('Please enter a username (max. 16 characters)')
 
-    finally:
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((IP, PORT))
+client_socket.setblocking(False)
+
+
+def send():
+    message = input(f'{username} > ')
+    if message == '[exit]':
+        message = format_message(username, 'Signing out')
+        client_socket.send(message.encode('utf-8'))
+        print('Signed out')
         client_socket.close()
-        print('Socket closed')
+        sys.exit()
+    elif message:
+        message = format_message(username, message).encode('utf-8')
+        client_socket.send(message)
 
 
-if __name__ == '__main__':
+def receive():
+    try:
+        message_size = client_socket.recv(LENGTH_HEADER_SIZE)
+        if message_size:
+            message_size = int(message_size.decode('utf-8').strip())
+            sender = client_socket.recv(
+                USER_HEADER_SIZE).decode('utf-8').strip()
+            message = client_socket.recv(message_size).decode('utf-8')
+            print(f'\n{sender} > {message}\n{username} > ')
 
-    # Bind the socket to the port
-    server_address = '127.0.0.1'
-    server_port = 10001
+    except IOError as e:
+        if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+            print('Encountered error while readeing', e)
+            client_socket.close()
+            sys.exit()
+    except Exception as e:
+        client_socket.close()
+        sys.exit()
 
-    for i in range(7):
-        p = multiprocessing.Process(
-            target=send_message, args=(server_address, server_port))
-        p.start()
-        p.join()
+
+def loop_receive():
+    while True:
+        receive()
+
+
+receive_thread = Thread(target=loop_receive)
+receive_thread.start()
+while True:
+    send()

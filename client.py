@@ -8,6 +8,8 @@ from threading import Thread
 LENGTH_HEADER_SIZE = 8
 USER_HEADER_SIZE = 16
 
+# Function for formatting the messages to dynamically calculate buffersize
+
 
 def format_message(username, message):
     if not message:
@@ -15,18 +17,22 @@ def format_message(username, message):
     length_header = f'{len(message):<{LENGTH_HEADER_SIZE}}'
     user_header = f'{username:<{USER_HEADER_SIZE}}'
     return f'{length_header}{user_header}{message}'
+# Header Utils End
 
 
 IP = '127.0.0.1'
 PORT = 5555
 username = ''
 
+# Creating a username for each new participant
 while not username:
     username = input('Please enter a username (max. 16 characters)')
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
 client_socket.setblocking(False)
+
+# Function for sending messages as a client
 
 
 def send():
@@ -40,6 +46,8 @@ def send():
     elif message:
         message = format_message(username, message).encode('utf-8')
         client_socket.send(message)
+
+# Function for receiving messages that are sent from other clients via server
 
 
 def receive():
@@ -60,6 +68,8 @@ def receive():
     except Exception as e:
         client_socket.close()
         sys.exit()
+
+# Function to receive messages when there are some
 
 
 def loop_receive():

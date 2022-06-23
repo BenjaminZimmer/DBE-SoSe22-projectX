@@ -8,6 +8,8 @@ PORT = 5555
 LENGTH_HEADER_SIZE = 8
 USER_HEADER_SIZE = 16
 
+# Function for formatting the messages to dynamically calculate buffersize
+
 
 def format_message(username, message):
     if not message:
@@ -24,6 +26,8 @@ print(f'Listeing on {IP}:{PORT}')
 all_sockets = [server_socket]
 # Header Utils End
 
+# Function for receiving the messages from clients
+
 
 def receive(client_socket):
     size_header = client_socket.recv(LENGTH_HEADER_SIZE)
@@ -37,6 +41,8 @@ def receive(client_socket):
     message = client_socket.recv(message_size).decode('utf-8')
     print(f'{user} > {message}')
     return f'{size_header}{user_header}{message}'
+
+# Function for broadcasting the messages from the clients to all other clients
 
 
 def broadcast(sender, message):
